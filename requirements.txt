@@ -13,4 +13,7 @@ eventlet==0.33.3
 Werkzeug==2.3.7
 # Optional AI dependencies - install if needed
 # deepface==0.0.79
-# tensorflow==2.13.0
+# tensorflow==2.13.0pip>=23.0
+setuptools>=65.0
+wheel
+gunicorn
