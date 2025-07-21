@@ -1,6 +1,16 @@
+# Ignore virtual environments
 anime-env/
 chatapp-env/
+
+# Ignore cache and compiled files
 __pycache__/
+*.pyc
 *.pyd
 *.dll
-*.pyc
+
+# Ignore large model files if needed
+*.h5
+*.pkl
+
+# Ignore database files
+*.db
