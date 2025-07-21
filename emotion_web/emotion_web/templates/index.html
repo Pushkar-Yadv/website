@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Emotion Detection</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='ghibli_emotions.css') }}">
+</head>
+<body>
+  <div class="status-container">
+    <p id="status"></p>
+    <div style="text-align: center; margin: 10px 0;">
+      <a href="/dashboard" style="color: #007bff; text-decoration: none; padding: 5px 10px; border: 1px solid #007bff; border-radius: 5px;">📊 View Dashboard</a>
+      <a href="/mood-filter" style="margin-left: 10px; color: #ff6b6b; text-decoration: none; padding: 5px 10px; border: 1px solid #ff6b6b; border-radius: 5px;">🎨 MOOD Filter</a>
+      <a href="/ghibli-gallery" style="margin-left: 10px; color: #6f42c1; text-decoration: none; padding: 5px 10px; border: 1px solid #6f42c1; border-radius: 5px;">✨ Ghibli Gallery</a>
+      <button id="testModalBtn" style="margin-left: 10px; padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">🧪 Test Modal</button>
+    </div>
+  </div>
+  
+  <div class="chatbot-container">
+    <div class="chatbot-header">
+      <h3>ChatBot</h3>
+      <l1> Made by Pushkar Yadav</l1>
+    </div>
+    <div class="chatbot-messages" id="chatbox">
+      <div class="bot-message">Hello! I'm ChatBot. How can I help you today?</div>
+      <div class="bot-message">Click the camera button to detect your emotions for 10 seconds!</div>
+    </div>
+    <div class="chatbot-input">
+      <input type="text" id="user-input" placeholder="Type your message...">
+      <button id="send-btn">Send</button>
+      <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/icons/camera-fill.svg" id="detectBtn" alt="Detect Emotion" class="emotion-btn">
+    </div>
+  </div>
+
+  <!-- Regular Emotion Modal -->
+  <div id="emotionModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>🎭 Emotions Detected!</h2>
+      <p>Click on an emoji to add it to your message:</p>
+      <div class="emoji-container" id="emojiContainer">
+        <!-- Emojis will be populated here by JavaScript -->
+      </div>
+    </div>
+  </div>
+  
+  <!-- Ghibli-style Emotion Modal -->
+  <div id="ghibliEmotionModal" class="ghibli-modal">
+    <div class="ghibli-modal-content">
+      <span class="ghibli-close">&times;</span>
+      <h2>✨ Ghibli Emotions Detected!</h2>
+      <p>Click on your favorite emotion art to add it to your message:</p>
+      <div class="ghibli-emotion-container" id="ghibliEmotionContainer">
+        <!-- Ghibli-style emotion images will be populated here by JavaScript -->
+      </div>
+    </div>
+  </div>
+  
+  <!-- Countdown Modal -->
+  <div id="countdownModal" class="modal">
+    <div class="modal-content">
+      <h2>📸 Detecting Emotions...</h2>
+      <p>Please look at the camera and show different expressions.</p>
+      <p style="color: #6f42c1; font-weight: bold;">✨ High-confidence emotions will be automatically captured and transformed into Ghibli-style art!</p>
+      <div class="countdown-container">
+        <div class="countdown-progress">
+          <div id="countdownBar" class="countdown-bar"></div>
+        </div>
+        <div id="countdownText" class="countdown-text">10 seconds remaining</div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Ghibli Gallery Modal -->
+  <div id="ghibliGalleryModal" class="ghibli-modal">
+    <div class="ghibli-modal-content" style="max-width: 90%; max-height: 90%;">
+      <span class="ghibli-close" id="ghibliGalleryClose">&times;</span>
+      <h2>✨ Your Ghibli Emotion Gallery ✨</h2>
+      <p>Beautiful Studio Ghibli-style transformations of your captured emotions</p>
+      <div id="ghibliGalleryContainer" class="ghibli-gallery-grid">
+        <!-- Ghibli captures will be loaded here -->
+      </div>
+      <div id="ghibliGalleryLoading" style="text-align: center; padding: 20px;">
+        Loading your Ghibli captures...
+      </div>
+      <div id="ghibliGalleryEmpty" style="text-align: center; padding: 20px; display: none;">
+        <p>No Ghibli captures yet! Detect emotions with high confidence to generate beautiful art.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Emotion to emoji mapping
+    const emotionEmojis = {
+      'angry': '😠',
+      'disgust': '🤢',
+      'fear': '😨',
+      'happy': '😃',
+      'sad': '😢',
+      'surprise': '😲',
+      'surprised': '😲',
+      'neutral': '😐'
+    };
+
+    // Modal elements
+    const modal = document.getElementById('emotionModal');
+    const ghibliModal = document.getElementById('ghibliEmotionModal');
+    const countdownModal = document.getElementById('countdownModal');
+    const closeBtn = document.querySelector('.close');
+    const ghibliCloseBtn = document.querySelector('.ghibli-close');
+    const emojiContainer = document.getElementById('emojiContainer');
+    const ghibliEmotionContainer = document.getElementById('ghibliEmotionContainer');
+    const userInput = document.getElementById('user-input');
+    const countdownBar = document.getElementById('countdownBar');
+    const countdownText = document.getElementById('countdownText');
+    const detectBtn = document.getElementById('detectBtn');
+
+    // Close modal when clicking the X
+    closeBtn.onclick = function() {
+      modal.style.display = 'none';
+    };
+    
+    ghibliCloseBtn.onclick = function() {
+      ghibliModal.style.display = 'none';
+    };
+
+    // Close modals when clicking outside of them
+    window.onclick = function(event) {
+      if (event.target === modal) {
+        modal.style.display = 'none';
+      }
+      if (event.target === ghibliModal) {
+        ghibliModal.style.display = 'none';
+      }
+    };
+
+    // Function to show the regular emoji modal
+    function showEmotionModal(emotions) {
+      // Clear previous emojis
+      emojiContainer.innerHTML = '';
+      
+      // Get unique emotions
+      const uniqueEmotions = [...new Set(emotions.map(e => e.emotion))];
+      
+      // Create emoji options
+      uniqueEmotions.forEach(emotion => {
+        const emojiDiv = document.createElement('div');
+        emojiDiv.style.display = 'flex';
+        emojiDiv.style.flexDirection = 'column';
+        emojiDiv.style.alignItems = 'center';
+        emojiDiv.style.cursor = 'pointer';
+        
+        const emojiSpan = document.createElement('span');
+        emojiSpan.className = 'emoji-option';
+        emojiSpan.textContent = emotionEmojis[emotion] || '😐';
+        emojiSpan.title = `Click to add ${emotion} emoji`;
+        
+        const labelSpan = document.createElement('span');
+        labelSpan.className = 'emotion-label';
+        labelSpan.textContent = emotion;
+        
+        // Add click handler
+        emojiSpan.onclick = function() {
+          const currentText = userInput.value;
+          const emoji = emotionEmojis[emotion] || '😐';
+          userInput.value = currentText + emoji;
+          userInput.focus();
+          modal.style.display = 'none';
+          
+          // Add a subtle animation to the input
+          userInput.style.backgroundColor = '#e8f5e8';
+          setTimeout(() => {
+            userInput.style.backgroundColor = '';
+          }, 500);
+          
+          // Add message to chat
+          addMessage(`I'm feeling ${emotion} ${emoji}`, true);
+          
+          // Add bot response
+          setTimeout(() => {
+            const responses = {
+              'happy': `I'm glad you're feeling happy! ${emoji} Your positive energy is contagious.`,
+              'sad': `I understand you're feeling sad ${emoji}. It's okay to feel this way sometimes.`,
+              'angry': `I see you're feeling angry ${emoji}. Taking deep breaths can help.`,
+              'surprised': `Wow! You're surprised ${emoji}! Did something unexpected happen?`,
+              'surprise': `Wow! You're surprised ${emoji}! Did something unexpected happen?`,
+              'fear': `I notice you're feeling fearful ${emoji}. Remember that you're safe here.`,
+              'disgust': `I see you're feeling disgusted ${emoji}. Sometimes things can be unpleasant.`,
+              'neutral': `You seem to be feeling neutral ${emoji}. That's perfectly fine!`
+            };
+            
+            const response = responses[emotion] || `I see you're feeling ${emotion}. How can I help?`;
+            addMessage(response, false);
+          }, 500);
+        };
+        
+        emojiDiv.appendChild(emojiSpan);
+        emojiDiv.appendChild(labelSpan);
+        emojiContainer.appendChild(emojiDiv);
+      });
+      
+      // Show the modal
+      modal.style.display = 'block';
+    }
+    
+    // Function to show the Ghibli-style emotion modal
+    function showGhibliEmotionModal(emotions) {
+      // Clear previous emotions
+      ghibliEmotionContainer.innerHTML = '';
+      
+      // Get unique emotions
+      const uniqueEmotions = [...new Set(emotions.map(e => e.emotion))];
+      
+      // Create Ghibli-style emotion cards
+      uniqueEmotions.forEach(emotion => {
+        const emotionData = emotions.find(e => e.emotion === emotion);
+        
+        const card = document.createElement('div');
+        card.className = 'ghibli-emotion-card';
+        card.title = `${emotion.charAt(0).toUpperCase() + emotion.slice(1)} (${Math.round(emotionData.confidence)}% confidence)`;
+        
+        const img = document.createElement('img');
+        img.className = 'ghibli-emotion-image';
+        img.src = emotionData.image_url;
+        img.alt = emotion;
+        
+        const label = document.createElement('div');
+        label.className = 'ghibli-emotion-label';
+        label.textContent = emotion;
+        
+        // Add click handler
+        card.onclick = function() {
+          const currentText = userInput.value;
+          const emoji = emotionEmojis[emotion] || '😐';
+          userInput.value = currentText + `[${emotion} ${emoji}]`;
+          userInput.focus();
+          ghibliModal.style.display = 'none';
+          
+          // Add a subtle animation to the input
+          userInput.style.backgroundColor = '#e8f5e8';
+          setTimeout(() => {
+            userInput.style.backgroundColor = '';
+          }, 500);
+          
+          // Add message to chat
+          addMessage(`I'm feeling ${emotion} ${emoji}`, true);
+          
+          // Add bot response
+          setTimeout(() => {
+            const responses = {
+              'happy': `I'm glad you're feeling happy! ${emoji} Your positive energy is contagious.`,
+              'sad': `I understand you're feeling sad ${emoji}. It's okay to feel this way sometimes.`,
+              'angry': `I see you're feeling angry ${emoji}. Taking deep breaths can help.`,
+              'surprised': `Wow! You're surprised ${emoji}! Did something unexpected happen?`,
+              'surprise': `Wow! You're surprised ${emoji}! Did something unexpected happen?`,
+              'fear': `I notice you're feeling fearful ${emoji}. Remember that you're safe here.`,
+              'disgust': `I see you're feeling disgusted ${emoji}. Sometimes things can be unpleasant.`,
+              'neutral': `You seem to be feeling neutral ${emoji}. That's perfectly fine!`
+            };
+            
+            const response = responses[emotion] || `I see you're feeling ${emotion}. How can I help?`;
+            addMessage(response, false);
+          }, 500);
+        };
+        
+        card.appendChild(img);
+        card.appendChild(label);
+        ghibliEmotionContainer.appendChild(card);
+      });
+      
+      // Show the modal
+      ghibliModal.style.display = 'block';
+    }
+    
+    // Function to show countdown modal and update progress
+    function showCountdownModal() {
+      countdownModal.style.display = 'block';
+      countdownBar.style.width = '0%';
+      countdownText.textContent = '10 seconds remaining';
+      
+      let secondsLeft = 10;
+      const countdownInterval = setInterval(() => {
+        secondsLeft--;
+        const progress = (10 - secondsLeft) * 10;
+        countdownBar.style.width = `${progress}%`;
+        countdownText.textContent = `${secondsLeft} seconds remaining`;
+        
+        if (secondsLeft <= 0) {
+          clearInterval(countdownInterval);
+          countdownModal.style.display = 'none';
+        }
+      }, 1000);
+      
+      return countdownInterval;
+    }
+    
+    // Function to add messages to the chat
+    function addMessage(message, isUser) {
+      const messageDiv = document.createElement('div');
+      messageDiv.className = isUser ? 'user-message' : 'bot-message';
+      messageDiv.textContent = message;
+      
+      const chatbox = document.getElementById('chatbox');
+      chatbox.appendChild(messageDiv);
+      chatbox.scrollTop = chatbox.scrollHeight;
+    }
+
+    // Detect emotion button click handler
+    document.getElementById("detectBtn").onclick = function () {
+      console.log("Camera button clicked!"); // Debug log
+      document.getElementById("status").innerText = "Running emotion detection for 10 seconds...";
+      
+      // Add visual feedback
+      detectBtn.classList.add('camera-active');
+      
+      // Show countdown modal
+      const countdownInterval = showCountdownModal();
+      
+      // Add message to chat
+      addMessage("Detecting my emotions for 10 seconds...", true);
+      
+      fetch('/detect')
+        .then(res => res.json())
+        .then(data => {
+          console.log("Received data:", data); // Debug log
+          
+          // Clear countdown and visual feedback
+          clearInterval(countdownInterval);
+          countdownModal.style.display = 'none';
+          detectBtn.classList.remove('camera-active');
+          
+          if (data.status === "success") {
+            document.getElementById("status").innerText = "Emotion detection completed!";
+            
+            // Show modal with detected emotions
+            if (data.emotions && data.emotions.length > 0) {
+              console.log("Showing modal with emotions:", data.emotions); // Debug log
+              
+              // Add message to chat
+              addMessage(`Detected ${data.emotions.length} emotions! Please select one from the gallery.`, false);
+              
+              // Show appropriate modal based on use_ghibli flag
+              if (data.use_ghibli) {
+                showGhibliEmotionModal(data.emotions);
+              } else {
+                showEmotionModal(data.emotions);
+              }
+              
+              // Check for Ghibli captures
+              checkForGhibliCaptures(data);
+            } else {
+              document.getElementById("status").innerText = "No emotions detected. Try again!";
+              addMessage("No emotions were detected. Please try again with better lighting and make sure your face is visible!", false);
+            }
+          } else {
+            document.getElementById("status").innerText = "Error: " + data.message;
+            addMessage("Sorry, there was an error detecting your emotions. Please try again.", false);
+          }
+        })
+        .catch(err => {
+          console.error("Fetch error:", err); // Debug log
+          document.getElementById("status").innerText = "Fetch error: " + err;
+          detectBtn.classList.remove('camera-active');
+          countdownModal.style.display = 'none';
+          addMessage("Sorry, there was an error connecting to the emotion detection service. Please try again.", false);
+        });
+    };
+
+    // Test modal functionality
+    document.getElementById("testModalBtn").onclick = function () {
+      console.log("Test modal button clicked!"); // Debug log
+      fetch('/test-modal')
+        .then(res => res.json())
+        .then(data => {
+          console.log("Test modal data:", data); // Debug log
+          if (data.status === "success" && data.emotions && data.emotions.length > 0) {
+            // Show appropriate modal based on use_ghibli flag
+            if (data.use_ghibli) {
+              showGhibliEmotionModal(data.emotions);
+            } else {
+              showEmotionModal(data.emotions);
+            }
+          }
+        })
+        .catch(err => {
+          console.error("Test modal error:", err); // Debug log
+        });
+    };
+    
+    // Chatbot functionality
+    class SimpleChatbot {
+        constructor() {
+            this.responses = {
+                'hello|hi|hey': [
+                    "Hello! How can I help you today?",
+                    "Hi there! What can I do for you?",
+                    "Hey! Nice to meet you!"
+                ],
+                'how are you': [
+                    "I'm doing great, thanks for asking!",
+                    "I'm fine, how about you?",
+                    "All good here! How are you?"
+                ],
+                'what is your name': [
+                    "I'm SimpleBot, nice to meet you!",
+                    "You can call me SimpleBot!",
+                    "I'm SimpleBot, your friendly chatbot!"
+                ],
+                'bye|goodbye': [
+                    "Goodbye! Have a great day!",
+                    "See you later!",
+                    "Take care!"
+                ],
+                'help': [
+                    "I can chat with you about basic topics. Try asking me how I am or what my name is!",
+                    "I'm here to have a simple conversation. Feel free to say hello!",
+                    "I can respond to basic greetings and questions. What would you like to know?"
+                ],
+                'i am pushkar yadav': [
+                    "Hi! Pushkar Yadav! How can I assist you today?"
+                ]
+            };
+            
+            // Default response if no pattern matches
+            this.defaultResponses = [
+                "I'm not sure I understand. Could you rephrase that?",
+                "Interesting! Tell me more about that.",
+                "I'm still learning. Could you try asking something else?",
+                "I don't have a response for that yet, but I'm learning!"
+            ];
+        }
+
+        getResponse(userInput) {
+            // Convert input to lowercase for better matching
+            userInput = userInput.toLowerCase();
+            
+            // Check each pattern
+            for (const [pattern, responses] of Object.entries(this.responses)) {
+                if (new RegExp(pattern).test(userInput)) {
+                    return this.randomChoice(responses);
+                }
+            }
+            
+            // If no pattern matches, return a random default response
+            return this.randomChoice(this.defaultResponses);
+        }
+        
+        randomChoice(array) {
+            return array[Math.floor(Math.random() * array.length)];
+        }
+    }
+
+    const chatbot = new SimpleChatbot();
+    const chatbox = document.getElementById('chatbox');
+    const sendBtn = document.getElementById('send-btn');
+
+    function addMessage(message, isUser) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = isUser ? 'user-message' : 'bot-message';
+        messageDiv.textContent = message;
+        chatbox.appendChild(messageDiv);
+        chatbox.scrollTop = chatbox.scrollHeight;
+    }
+
+    function handleUserInput() {
+        console.log("handleUserInput called"); // Debug log
+        const message = userInput.value.trim();
+        console.log("Message:", message); // Debug log
+        if (message) {
+            addMessage(message, true);
+            userInput.value = '';
+            
+            // Get and display bot response
+            setTimeout(() => {
+                const response = chatbot.getResponse(message);
+                console.log("Bot response:", response); // Debug log
+                addMessage(response, false);
+            }, 500);
+        }
+    }
+
+    // Event listeners
+    console.log("Setting up event listeners"); // Debug log
+    if (sendBtn) {
+        sendBtn.addEventListener('click', handleUserInput);
+        console.log("Send button listener added"); // Debug log
+    } else {
+        console.error("Send button not found!"); // Debug log
+    }
+    
+    if (userInput) {
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleUserInput();
+            }
+        });
+        console.log("User input listener added"); // Debug log
+    } else {
+        console.error("User input not found!"); // Debug log
+    }
+    
+    // Ghibli Gallery Modal functionality
+    const ghibliGalleryModal = document.getElementById('ghibliGalleryModal');
+    const ghibliGalleryClose = document.getElementById('ghibliGalleryClose');
+    const ghibliGalleryContainer = document.getElementById('ghibliGalleryContainer');
+    const ghibliGalleryLoading = document.getElementById('ghibliGalleryLoading');
+    const ghibliGalleryEmpty = document.getElementById('ghibliGalleryEmpty');
+    
+    // Close Ghibli gallery modal
+    ghibliGalleryClose.onclick = function() {
+        ghibliGalleryModal.style.display = 'none';
+    };
+    
+    // Function to show Ghibli gallery modal
+    function showGhibliGalleryModal() {
+        ghibliGalleryModal.style.display = 'block';
+        loadGhibliGalleryCaptures();
+    }
+    
+    // Function to load Ghibli captures
+    function loadGhibliGalleryCaptures() {
+        ghibliGalleryLoading.style.display = 'block';
+        ghibliGalleryContainer.innerHTML = '';
+        ghibliGalleryEmpty.style.display = 'none';
+        
+        fetch('/api/ghibli-captures')
+            .then(response => response.json())
+            .then(data => {
+                ghibliGalleryLoading.style.display = 'none';
+                
+                if (data.status === 'success' && data.captures.length > 0) {
+                    displayGhibliGalleryCaptures(data.captures);
+                } else {
+                    ghibliGalleryEmpty.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading Ghibli captures:', error);
+                ghibliGalleryLoading.innerHTML = 'Error loading captures. Please try again.';
+            });
+    }
+    
+    // Function to display Ghibli captures in the modal
+    function displayGhibliGalleryCaptures(captures) {
+        ghibliGalleryContainer.innerHTML = '';
+        
+        captures.forEach(capture => {
+            const card = document.createElement('div');
+            card.className = 'ghibli-emotion-card';
+            card.style.margin = '10px';
+            card.style.cursor = 'pointer';
+            
+            const img = document.createElement('img');
+            img.className = 'ghibli-emotion-image';
+            img.src = capture.ghibli_image_url;
+            img.alt = capture.emotion;
+            img.style.width = '150px';
+            img.style.height = '150px';
+            img.style.objectFit = 'cover';
+            img.style.borderRadius = '10px';
+            
+            const label = document.createElement('div');
+            label.className = 'ghibli-emotion-label';
+            label.textContent = `${capture.emotion} (${Math.round(capture.confidence)}%)`;
+            label.style.textAlign = 'center';
+            label.style.marginTop = '5px';
+            label.style.fontSize = '0.9em';
+            
+            // Add click handler to use the emotion
+            card.onclick = function() {
+                const currentText = userInput.value;
+                const emoji = emotionEmojis[capture.emotion] || '😐';
+                userInput.value = currentText + `[Ghibli ${capture.emotion} ${emoji}]`;
+                userInput.focus();
+                ghibliGalleryModal.style.display = 'none';
+                
+                // Add message to chat
+                addMessage(`I'm feeling ${capture.emotion} ${emoji} (Ghibli style!)`, true);
+                
+                // Add bot response
+                setTimeout(() => {
+                    addMessage(`Beautiful! I love your Ghibli-style ${capture.emotion} emotion! ✨`, false);
+                }, 500);
+            };
+            
+            card.appendChild(img);
+            card.appendChild(label);
+            ghibliGalleryContainer.appendChild(card);
+        });
+    }
+    
+    // Check for Ghibli captures after emotion detection
+    function checkForGhibliCaptures(data) {
+        if (data.has_ghibli_captures && data.ghibli_captures.length > 0) {
+            // Add a button to view Ghibli gallery
+            setTimeout(() => {
+                addMessage(`✨ Amazing! I've captured ${data.ghibli_captures.length} high-confidence emotions and transformed them into Ghibli-style art! Click here to view your gallery.`, false);
+                
+                // Add a clickable message to open gallery
+                const galleryButton = document.createElement('button');
+                galleryButton.textContent = '🎨 View My Ghibli Gallery';
+                galleryButton.style.cssText = 'background: linear-gradient(45deg, #667eea, #764ba2); color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; margin: 10px 0;';
+                galleryButton.onclick = showGhibliGalleryModal;
+                
+                const buttonContainer = document.createElement('div');
+                buttonContainer.className = 'bot-message';
+                buttonContainer.appendChild(galleryButton);
+                chatbox.appendChild(buttonContainer);
+                chatbox.scrollTop = chatbox.scrollHeight;
+            }, 1000);
+        }
+    }
+  </script>
+</body>
+</html>

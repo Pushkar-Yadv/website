@@ -1,0 +1,1425 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - ChatApp{% endblock %}
+
+{% block content %}
+<div style="display: grid; grid-template-columns: 300px 1fr 280px; gap: 1rem; height: 80vh;">
+    
+    <!-- Left Sidebar - Online Users -->
+    <div class="card" style="display: flex; flex-direction: column;">
+        <div style="padding: 1rem; background: rgba(100, 255, 218, 0.1); margin: -2rem -2rem 1rem -2rem;">
+            <h3 style="color: #64ffda; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="bi bi-people-fill"></i>
+                Online Users
+                <span id="onlineCount" class="badge" style="background: #1de9b6; color: #000; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.8rem;">0</span>
+            </h3>
+        </div>
+        
+        <div id="onlineUsers" style="flex: 1; overflow-y: auto; padding-right: 0.5rem;">
+            <!-- Online users will be populated here -->
+        </div>
+        
+        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+            <div style="text-align: center; color: #b0bec5; font-size: 0.9rem;">
+                <i class="bi bi-wifi"></i> Connected as <strong style="color: #64ffda;">{{ user.username }}</strong>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Chat Area -->
+    <div class="card" style="display: flex; flex-direction: column;">
+        <!-- Welcome/No Chat Selected -->
+        <div id="noChatSelected" style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; color: #b0bec5;">
+            <div style="font-size: 4rem; opacity: 0.3; margin-bottom: 1rem;">
+                <i class="bi bi-chat-square-dots"></i>
+            </div>
+            <h3 style="color: #64ffda; margin-bottom: 0.5rem;">Welcome to ChatApp</h3>
+            <p style="margin: 0; font-size: 1.1rem;">Select a user from the sidebar to start chatting</p>
+            <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; opacity: 0.7;">Click on any online user to open a private conversation</p>
+        </div>
+        
+        <!-- Individual Chat Area (Hidden by default) -->
+        <div id="chatArea" style="display: none; flex: 1; flex-direction: column;">
+            <!-- Chat Header -->
+            <div style="padding: 1rem; background: rgba(29, 233, 182, 0.1); margin: -2rem -2rem 1rem -2rem; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <button id="closeChatBtn" style="background: none; border: none; color: #64ffda; font-size: 1.2rem; cursor: pointer; padding: 0.5rem; border-radius: 50%; transition: all 0.3s;">
+                        <i class="bi bi-arrow-left"></i>
+                    </button>
+                    <div>
+                        <h3 id="chatWithUser" style="color: #1de9b6; margin: 0;">
+                            <i class="bi bi-person-circle"></i> 
+                        </h3>
+                        <div id="chatUserStatus" style="font-size: 0.8rem; color: #64ffda; margin-top: 0.2rem;">
+                            <i class="bi bi-circle-fill" style="font-size: 0.6rem;"></i> Online
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <span id="typingIndicator" style="color: #64ffda; font-size: 0.9rem; opacity: 0; transition: opacity 0.3s;">
+                        <i class="bi bi-three-dots"></i> Typing...
+                    </span>
+                </div>
+            </div>
+        
+            <!-- Messages Area -->
+            <div id="messageArea" style="flex: 1; overflow-y: auto; padding-right: 0.5rem; scroll-behavior: smooth;">
+                <!-- Messages will be loaded dynamically for each chat -->
+            </div>
+            
+            <!-- Message Input -->
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+                <form id="messageForm" style="display: flex; gap: 0.5rem; align-items: flex-end;">
+                    <div style="flex: 1;">
+                        <textarea id="messageInput" class="form-control" rows="1" 
+                                  placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)"
+                                  style="resize: none; min-height: 45px; max-height: 120px;"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="height: 45px; padding: 0 1.5rem;">
+                        <i class="bi bi-send-fill"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right Sidebar - AI Features -->
+    <div class="card" style="overflow: hidden; display: flex; flex-direction: column;">
+        <div style="padding: 1rem; background: rgba(0, 188, 212, 0.1); margin: -2rem -2rem 1rem -2rem;">
+            <h3 style="color: #00bcd4; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="bi bi-robot"></i> AI Features
+            </h3>
+        </div>
+        
+        <!-- Profile Section -->
+        <div style="text-align: center; margin-bottom: 1.5rem;">
+            <div style="position: relative; display: inline-block;">
+                <img src="{{ url_for('static', filename='profiles/' + user.profile_picture) if user.profile_picture != 'default_avatar.png' else url_for('static', filename='default_avatar.png') }}" 
+                     alt="Profile" 
+                     style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid #64ffda; object-fit: cover;">
+                <div style="position: absolute; bottom: 0; right: 0; width: 20px; height: 20px; background: #4caf50; border-radius: 50%; border: 2px solid #000;"></div>
+            </div>
+            <h4 style="color: #64ffda; margin: 0.5rem 0;">{{ user.username }}</h4>
+            <a href="{{ url_for('profile') }}" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 1rem;">
+                <i class="bi bi-pencil-fill"></i> Edit Profile
+            </a>
+        </div>
+        
+        {% if emotion_available %}
+        <!-- Emotion Detection -->
+        <div class="ai-feature" style="margin-bottom: 1.5rem;">
+            <h4 style="color: #ff9800; margin-bottom: 1rem;">
+                <i class="bi bi-emoji-smile-fill"></i> Emotion Detection
+            </h4>
+            <p style="color: #b0bec5; font-size: 0.9rem; margin-bottom: 1rem;">
+                Detect your current emotion using AI
+            </p>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <button id="emotionDetectBtn" class="btn btn-primary" style="width: 100%;">
+                    <i class="bi bi-camera-fill"></i> Quick Detect
+                </button>
+                <button id="browserEmotionBtn" class="btn btn-secondary" style="width: 100%; font-size: 0.9rem;">
+                    <i class="bi bi-browser-chrome"></i> Browser Camera
+                </button>
+                <button id="simulateEmotionBtn" class="btn btn-outline-secondary" style="width: 100%; font-size: 0.8rem; border: 1px solid #666; background: transparent;">
+                    <i class="bi bi-cpu"></i> Simulate (No Camera)
+                </button>
+            </div>
+            <div id="emotionResult" style="margin-top: 1rem; text-align: center;"></div>
+            <div id="emotionSendContainer" style="margin-top: 1rem; display: none;">
+                <button id="sendEmotionBtn" class="btn btn-success" style="width: 100%;">
+                    <i class="bi bi-send-fill"></i> Send Emotion to Friend
+                </button>
+            </div>
+        </div>
+        
+        <!-- Mood Filter -->
+        <div class="ai-feature" style="margin-bottom: 1.5rem;">
+            <h4 style="color: #e91e63; margin-bottom: 1rem;">
+                <i class="bi bi-palette-fill"></i> MOOD Filter
+            </h4>
+            <p style="color: #b0bec5; font-size: 0.9rem; margin-bottom: 1rem;">
+                Transform your photo with anime style
+            </p>
+            
+            <!-- Style selector -->
+            <select id="animeStyle" class="form-control" style="margin-bottom: 1rem;">
+                <option value="Shinkai">Shinkai Style</option>
+                <option value="Hayao">Hayao (Miyazaki) Style</option>
+                <option value="Paprika">Paprika Style</option>
+            </select>
+            
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <button id="moodFilterBtn" class="btn btn-primary" style="width: 100%;">
+                    <i class="bi bi-magic"></i> Quick Filter
+                </button>
+                <button id="browserMoodBtn" class="btn btn-secondary" style="width: 100%; font-size: 0.9rem;">
+                    <i class="bi bi-browser-chrome"></i> Browser Camera
+                </button>
+                <button id="simulateMoodBtn" class="btn btn-outline-secondary" style="width: 100%; font-size: 0.8rem; border: 1px solid #666; background: transparent;">
+                    <i class="bi bi-cpu"></i> Simulate Filter
+                </button>
+                <button id="testMoodSendBtn" class="btn btn-outline-info" style="width: 100%; font-size: 0.8rem; border: 1px solid #17a2b8; background: transparent; margin-top: 0.5rem;">
+                    <i class="bi bi-send-check"></i> Test Image Send
+                </button>
+            </div>
+            <div id="moodFilterResult" style="margin-top: 1rem; text-align: center;"></div>
+            <div id="moodSendContainer" style="margin-top: 1rem; display: none;">
+                <button id="sendMoodBtn" class="btn btn-success" style="width: 100%;">
+                    <i class="bi bi-send-fill"></i> Send Filter to Friend
+                </button>
+            </div>
+        </div>
+        {% else %}
+        <div style="text-align: center; color: #b0bec5; margin: 2rem 0;">
+            <i class="bi bi-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+            <p>AI features are not available</p>
+            <small>Emotion detection and mood filters require additional setup</small>
+        </div>
+        {% endif %}
+        
+        <!-- Recent Activity -->
+        <div style="flex: 1; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+            <h5 style="color: #64ffda; margin-bottom: 1rem;">
+                <i class="bi bi-clock-history"></i> Activity Feed
+            </h5>
+            <div id="activityFeed" style="font-size: 0.8rem; color: #b0bec5;">
+                <div class="activity-item">
+                    <i class="bi bi-dot" style="color: #4caf50;"></i>
+                    Joined the chat
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for AI results -->
+<div id="aiModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center;">
+    <div class="modal-content card" style="max-width: 500px; max-height: 80vh; overflow: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3 id="modalTitle" style="color: #64ffda; margin: 0;"></h3>
+            <button id="closeModal" style="background: none; border: none; color: #64ffda; font-size: 1.5rem; cursor: pointer;">
+                <i class="bi bi-x-circle-fill"></i>
+            </button>
+        </div>
+        <div id="modalBody"></div>
+    </div>
+</div>
+
+<script>
+// Socket.IO connection
+const socket = io();
+
+// DOM elements
+const messageArea = document.getElementById('messageArea');
+const messageForm = document.getElementById('messageForm');
+const messageInput = document.getElementById('messageInput');
+const onlineUsers = document.getElementById('onlineUsers');
+const onlineCount = document.getElementById('onlineCount');
+const typingIndicator = document.getElementById('typingIndicator');
+const emotionDetectBtn = document.getElementById('emotionDetectBtn');
+const browserEmotionBtn = document.getElementById('browserEmotionBtn');
+const simulateEmotionBtn = document.getElementById('simulateEmotionBtn');
+const moodFilterBtn = document.getElementById('moodFilterBtn');
+const browserMoodBtn = document.getElementById('browserMoodBtn');
+const simulateMoodBtn = document.getElementById('simulateMoodBtn');
+const testMoodSendBtn = document.getElementById('testMoodSendBtn');
+const animeStyle = document.getElementById('animeStyle');
+const aiModal = document.getElementById('aiModal');
+const closeModal = document.getElementById('closeModal');
+const modalTitle = document.getElementById('modalTitle');
+const modalBody = document.getElementById('modalBody');
+const activityFeed = document.getElementById('activityFeed');
+
+// Individual chat elements
+const noChatSelected = document.getElementById('noChatSelected');
+const chatArea = document.getElementById('chatArea');
+const chatWithUser = document.getElementById('chatWithUser');
+const chatUserStatus = document.getElementById('chatUserStatus');
+const closeChatBtn = document.getElementById('closeChatBtn');
+const sendEmotionBtn = document.getElementById('sendEmotionBtn');
+const sendMoodBtn = document.getElementById('sendMoodBtn');
+const emotionSendContainer = document.getElementById('emotionSendContainer');
+const moodSendContainer = document.getElementById('moodSendContainer');
+
+// Current chat state
+let currentChatUser = null;
+let currentEmotionData = null;
+let currentMoodData = null;
+
+// Auto-resize textarea
+messageInput.addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+});
+
+// Handle message form submission
+messageForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const message = messageInput.value.trim();
+    if (message && currentChatUser) {
+        socket.emit('send_private_message', {
+            message: message,
+            recipient: currentChatUser,
+            type: 'text'
+        });
+        messageInput.value = '';
+        messageInput.style.height = '45px';
+    }
+});
+
+// Handle Enter key (send message) vs Shift+Enter (new line)
+messageInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        messageForm.dispatchEvent(new Event('submit'));
+    }
+});
+
+// Chat management functions
+function openChat(username) {
+    currentChatUser = username;
+    noChatSelected.style.display = 'none';
+    chatArea.style.display = 'flex';
+    chatWithUser.innerHTML = `<i class="bi bi-person-circle"></i> ${username}`;
+    
+    // Update status
+    if (username === '{{ session.username }}') {
+        chatUserStatus.innerHTML = '<i class="bi bi-circle-fill" style="font-size: 0.6rem; color: #4caf50;"></i> Yourself';
+    } else {
+        chatUserStatus.innerHTML = '<i class="bi bi-circle-fill" style="font-size: 0.6rem; color: #4caf50;"></i> Online';
+    }
+    
+    // Load chat history
+    loadChatHistory(username);
+    
+    // Focus message input
+    messageInput.focus();
+    messageInput.placeholder = `Type a message to ${username}...`;
+}
+
+function closeChat() {
+    currentChatUser = null;
+    chatArea.style.display = 'none';
+    noChatSelected.style.display = 'flex';
+    messageArea.innerHTML = '';
+    
+    // Hide AI send buttons
+    emotionSendContainer.style.display = 'none';
+    moodSendContainer.style.display = 'none';
+    currentEmotionData = null;
+    currentMoodData = null;
+}
+
+function loadChatHistory(username) {
+    // Clear current messages
+    messageArea.innerHTML = '';
+    
+    // Request chat history from server
+    socket.emit('get_chat_history', { recipient: username });
+}
+
+// Close chat button event
+if (closeChatBtn) {
+    closeChatBtn.addEventListener('click', closeChat);
+}
+
+// Socket event listeners
+socket.on('connect', function() {
+    console.log('Connected to server');
+    addActivity('Connected to chat server', 'success');
+});
+
+socket.on('disconnect', function() {
+    console.log('Disconnected from server');
+    addActivity('Disconnected from server', 'error');
+});
+
+socket.on('receive_private_message', function(data) {
+    // Only display if it's for the current chat
+    if (currentChatUser && (data.sender === currentChatUser || data.recipient === currentChatUser)) {
+        displayMessage(data);
+        scrollToBottom();
+    }
+});
+
+socket.on('chat_history', function(data) {
+    messageArea.innerHTML = '';
+    data.messages.forEach(function(message) {
+        displayMessage(message);
+    });
+    scrollToBottom();
+});
+
+socket.on('user_online', function(data) {
+    updateOnlineUsers(data.online_users);
+    if (data.username !== '{{ session.username }}') {
+        addActivity(`${data.username} joined the chat`, 'info');
+    }
+});
+
+socket.on('user_offline', function(data) {
+    updateOnlineUsers(data.online_users);
+    if (data.username !== '{{ session.username }}') {
+        addActivity(`${data.username} left the chat`, 'info');
+    }
+});
+
+// Display message in chat
+function displayMessage(data) {
+    const messageDiv = document.createElement('div');
+    const isOwnMessage = data.sender === '{{ session.username }}';
+    messageDiv.className = `message ${isOwnMessage ? 'own-message' : ''}`;
+    messageDiv.setAttribute('data-username', data.sender);
+    
+    // Handle different message types
+    let messageContent = data.message;
+    if (data.type === 'emotion' && data.extra_data) {
+        try {
+            const emotionData = JSON.parse(data.extra_data);
+            messageContent = `
+                <div style="background: rgba(100, 255, 218, 0.1); padding: 0.5rem; border-radius: 8px; margin: 0.5rem 0;">
+                    <div style="font-size: 1.5rem; text-align: center;">${getEmotionEmoji(emotionData.emotion)}</div>
+                    <div style="text-align: center; color: #64ffda; font-weight: bold;">${emotionData.emotion.toUpperCase()}</div>
+                    <div style="text-align: center; color: #b0bec5; font-size: 0.8rem;">${emotionData.confidence.toFixed(1)}% confidence</div>
+                </div>
+            `;
+        } catch (e) {
+            messageContent = data.message;
+        }
+    } else if (data.type === 'mood_filter' && data.extra_data) {
+        try {
+            const moodData = JSON.parse(data.extra_data);
+            let imageContent = '';
+            
+            if (moodData.fallback || !moodData.image_url || moodData.image_url.includes('simulated')) {
+                // For simulated filters, show a stylized representation
+                imageContent = `
+                    <div style="text-align: center; padding: 1rem; background: linear-gradient(45deg, rgba(233,30,99,0.2), rgba(100,255,218,0.2)); border-radius: 10px; margin: 0.5rem 0;">
+                        <div style="font-size: 3rem; margin-bottom: 0.5rem;">🎨</div>
+                        <div style="color: #e91e63; font-weight: bold; margin-bottom: 0.5rem;">${moodData.style_name || moodData.style}</div>
+                        <div style="color: #b0bec5; font-size: 0.9rem;">${moodData.description}</div>
+                        <div style="color: #64ffda; font-size: 0.8rem; margin-top: 0.5rem;">✨ AI Simulated Style</div>
+                    </div>
+                `;
+            } else if (moodData.image_data) {
+                // For base64 encoded images (real captures)
+                imageContent = `
+                    <div style="text-align: center;">
+                        <div style="color: #e91e63; font-weight: bold; margin-bottom: 0.5rem;">${moodData.style_name || moodData.style} Applied!</div>
+                        <img src="data:image/jpeg;base64,${moodData.image_data}" style="max-width: 200px; border-radius: 8px; margin: 0.5rem auto; display: block; box-shadow: 0 4px 8px rgba(0,0,0,0.3);">
+                        <div style="color: #64ffda; font-size: 0.8rem; margin-top: 0.5rem;">📷 Real Camera Capture</div>
+                    </div>
+                `;
+            } else {
+                // For file-based images with fallback
+                imageContent = `
+                    <div style="text-align: center;">
+                        <div style="color: #e91e63; font-weight: bold; margin-bottom: 0.5rem;">${moodData.style_name || moodData.style} Applied!</div>
+                        <img src="${moodData.image_url}" style="max-width: 200px; border-radius: 8px; margin: 0.5rem auto; display: block;" 
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                        <div style="display: none; padding: 1rem; background: rgba(233,30,99,0.1); border-radius: 8px; color: #e91e63;">
+                            🎨 ${moodData.style_name || moodData.style} Filter Result
+                        </div>
+                    </div>
+                `;
+            }
+            
+            messageContent = `
+                <div style="background: rgba(233, 30, 99, 0.1); padding: 0.5rem; border-radius: 8px; margin: 0.5rem 0;">
+                    ${imageContent}
+                </div>
+            `;
+        } catch (e) {
+            messageContent = data.message;
+        }
+    }
+    
+    messageDiv.innerHTML = `
+        <div class="message-header">
+            <strong style="color: ${isOwnMessage ? '#64ffda' : '#1de9b6'};">
+                ${data.sender}
+            </strong>
+            <small style="color: #b0bec5;">${data.timestamp}</small>
+        </div>
+        <div class="message-content">${messageContent}</div>
+    `;
+    
+    messageArea.appendChild(messageDiv);
+    
+    // Animate new message
+    messageDiv.style.opacity = '0';
+    messageDiv.style.transform = 'translateY(20px)';
+    setTimeout(() => {
+        messageDiv.style.opacity = '1';
+        messageDiv.style.transform = 'translateY(0)';
+    }, 10);
+}
+
+// Update online users list
+function updateOnlineUsers(users) {
+    onlineCount.textContent = users.length + 1; // +1 for self chat option
+    onlineUsers.innerHTML = '';
+    
+    // Add self chat option first
+    const selfDiv = document.createElement('div');
+    selfDiv.className = 'online-user clickable-user';
+    selfDiv.style.cursor = 'pointer';
+    selfDiv.innerHTML = `
+        <div class="user-item" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; border-radius: 8px; background: rgba(100, 255, 218, 0.1); margin-bottom: 0.5rem; border: 1px solid rgba(100, 255, 218, 0.3); transition: all 0.3s;">
+            <div style="width: 12px; height: 12px; background: #64ffda; border-radius: 50%; animation: pulse 2s infinite;"></div>
+            <div style="flex: 1;">
+                <div style="color: #64ffda; font-weight: bold; font-size: 0.95rem;">
+                    <i class="bi bi-person-fill"></i> Talk to Yourself
+                </div>
+                <div style="color: #b0bec5; font-size: 0.75rem; margin-top: 2px;">
+                    Personal notes & thoughts
+                </div>
+            </div>
+        </div>
+    `;
+    
+    selfDiv.addEventListener('click', () => openChat('{{ session.username }}'));
+    selfDiv.addEventListener('mouseenter', function() {
+        this.querySelector('.user-item').style.background = 'rgba(100, 255, 218, 0.2)';
+        this.querySelector('.user-item').style.transform = 'scale(1.02)';
+    });
+    selfDiv.addEventListener('mouseleave', function() {
+        this.querySelector('.user-item').style.background = 'rgba(100, 255, 218, 0.1)';
+        this.querySelector('.user-item').style.transform = 'scale(1)';
+    });
+    
+    onlineUsers.appendChild(selfDiv);
+    
+    // Add other online users
+    users.forEach(user => {
+        if (user.username !== '{{ session.username }}') {
+            const userDiv = document.createElement('div');
+            userDiv.className = 'online-user clickable-user';
+            userDiv.style.cursor = 'pointer';
+            userDiv.innerHTML = `
+                <div class="user-item" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; border-radius: 8px; background: rgba(255,255,255,0.05); margin-bottom: 0.5rem; border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s;">
+                    <div style="width: 12px; height: 12px; background: #4caf50; border-radius: 50%; animation: pulse 2s infinite;"></div>
+                    <div style="flex: 1;">
+                        <div style="color: #e0e0e0; font-weight: 500; font-size: 0.95rem;">
+                            <i class="bi bi-person-circle"></i> ${user.username}
+                        </div>
+                        <div style="color: #4caf50; font-size: 0.75rem; margin-top: 2px;">
+                            <i class="bi bi-circle-fill" style="font-size: 0.6rem;"></i> Online
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            userDiv.addEventListener('click', () => openChat(user.username));
+            userDiv.addEventListener('mouseenter', function() {
+                this.querySelector('.user-item').style.background = 'rgba(29, 233, 182, 0.1)';
+                this.querySelector('.user-item').style.transform = 'scale(1.02)';
+            });
+            userDiv.addEventListener('mouseleave', function() {
+                this.querySelector('.user-item').style.background = 'rgba(255,255,255,0.05)';
+                this.querySelector('.user-item').style.transform = 'scale(1)';
+            });
+            
+            onlineUsers.appendChild(userDiv);
+        }
+    });
+}
+
+// Scroll to bottom of messages
+function scrollToBottom() {
+    messageArea.scrollTop = messageArea.scrollHeight;
+}
+
+// Add activity to feed
+function addActivity(message, type) {
+    const activityItem = document.createElement('div');
+    activityItem.className = 'activity-item';
+    activityItem.innerHTML = `
+        <i class="bi bi-dot" style="color: ${type === 'success' ? '#4caf50' : type === 'error' ? '#f44336' : '#64ffda'};"></i>
+        ${message}
+    `;
+    activityFeed.insertBefore(activityItem, activityFeed.firstChild);
+    
+    // Keep only latest 10 activities
+    while (activityFeed.children.length > 10) {
+        activityFeed.removeChild(activityFeed.lastChild);
+    }
+}
+
+// AI Feature handlers
+if (emotionDetectBtn) {
+    emotionDetectBtn.addEventListener('click', async function() {
+        this.innerHTML = '<span class="loading"></span> Detecting...';
+        this.disabled = true;
+        
+        try {
+            const response = await fetch('/emotion_detect', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Store emotion data for sending
+                currentEmotionData = data;
+                
+                showModal('Emotion Detection Result', `
+                    <div style="text-align: center;">
+                        <div style="font-size: 3rem; margin: 1rem 0;">${getEmotionEmoji(data.emotion)}</div>
+                        <h3 style="color: #64ffda; margin-bottom: 1rem;">${data.emotion.charAt(0).toUpperCase() + data.emotion.slice(1)}</h3>
+                        <p style="color: #1de9b6; font-size: 1.2rem;">Confidence: ${data.confidence.toFixed(1)}%</p>
+                        <div style="margin-top: 1rem; padding: 1rem; background: rgba(100,255,218,0.1); border-radius: 10px;">
+                            <p style="color: #b0bec5;">${data.message}</p>
+                        </div>
+                    </div>
+                `);
+                
+                // Show send button
+                if (emotionSendContainer) {
+                    emotionSendContainer.style.display = 'block';
+                }
+                
+                addActivity(`Detected emotion: ${data.emotion} (${data.confidence.toFixed(1)}%)`, 'success');
+            } else {
+                showModal('Error', `<p style="color: #f44336;">${data.message}</p>`);
+            }
+        } catch (error) {
+            showModal('Error', `<p style="color: #f44336;">Failed to detect emotion</p>`);
+        }
+        
+        this.innerHTML = '<i class="bi bi-camera-fill"></i> Detect Emotion';
+        this.disabled = false;
+    });
+}
+
+// Browser-based emotion detection (built-in)
+if (browserEmotionBtn) {
+    browserEmotionBtn.addEventListener('click', async function() {
+        this.innerHTML = '<span class="loading"></span> Starting Camera...';
+        this.disabled = true;
+        
+        try {
+            // Use built-in browser camera detection
+            const result = await detectEmotionWithBrowserCamera();
+            
+            if (result.success) {
+                // Store emotion data for sending
+                currentEmotionData = result;
+                
+                showModal('Browser Emotion Detection Result', `
+                    <div style="text-align: center;">
+                        <div style="font-size: 3rem; margin: 1rem 0;">${result.emoji}</div>
+                        <h3 style="color: #64ffda; margin-bottom: 1rem;">${result.emotion.charAt(0).toUpperCase() + result.emotion.slice(1)}</h3>
+                        <p style="color: #1de9b6; font-size: 1.2rem;">Confidence: ${result.confidence.toFixed(1)}%</p>
+                        <div style="margin-top: 1rem; padding: 1rem; background: rgba(100,255,218,0.1); border-radius: 10px;">
+                            <p style="color: #b0bec5;">${result.message}</p>
+                            <small style="color: #888;">Method: Browser Camera</small>
+                        </div>
+                    </div>
+                `);
+                
+                // Show send button
+                if (emotionSendContainer) {
+                    emotionSendContainer.style.display = 'block';
+                }
+                
+                addActivity(`Browser emotion detected: ${result.emotion} (${result.confidence.toFixed(1)}%)`, 'success');
+            } else {
+                showModal('Error', `<p style="color: #f44336;">${result.message}</p>`);
+            }
+        } catch (error) {
+            showModal('Error', `<p style="color: #f44336;">Browser camera failed: ${error.message}</p>`);
+        }
+        
+        this.innerHTML = '<i class="bi bi-browser-chrome"></i> Browser Camera';
+        this.disabled = false;
+    });
+}
+
+// Simulate emotion detection (no camera needed)
+if (simulateEmotionBtn) {
+    simulateEmotionBtn.addEventListener('click', async function() {
+        this.innerHTML = '<span class="loading"></span> Simulating...';
+        this.disabled = true;
+        
+        try {
+            const response = await fetch('/emotion_simulate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Store emotion data for sending
+                currentEmotionData = data;
+                
+                showModal('Simulated Emotion Detection', `
+                    <div style="text-align: center;">
+                        <div style="font-size: 3rem; margin: 1rem 0;">${data.emoji}</div>
+                        <h3 style="color: #64ffda; margin-bottom: 1rem;">${data.emotion.charAt(0).toUpperCase() + data.emotion.slice(1)}</h3>
+                        <p style="color: #1de9b6; font-size: 1.2rem;">Confidence: ${data.confidence.toFixed(1)}%</p>
+                        <div style="margin-top: 1rem; padding: 1rem; background: rgba(100,255,218,0.1); border-radius: 10px;">
+                            <p style="color: #b0bec5;">${data.message}</p>
+                            <small style="color: #888;">Method: AI Simulation (No Camera Required)</small>
+                        </div>
+                    </div>
+                `);
+                
+                // Show send button
+                if (emotionSendContainer) {
+                    emotionSendContainer.style.display = 'block';
+                }
+                
+                addActivity(`Simulated emotion: ${data.emotion} (${data.confidence.toFixed(1)}%)`, 'success');
+            } else {
+                showModal('Error', `<p style="color: #f44336;">${data.message}</p>`);
+            }
+        } catch (error) {
+            showModal('Error', `<p style="color: #f44336;">Simulation failed: ${error.message}</p>`);
+        }
+        
+        this.innerHTML = '<i class="bi bi-cpu"></i> Simulate (No Camera)';
+        this.disabled = false;
+    });
+}
+
+if (moodFilterBtn) {
+    moodFilterBtn.addEventListener('click', async function() {
+        this.innerHTML = '<span class="loading"></span> Processing...';
+        this.disabled = true;
+        
+        try {
+            const response = await fetch('/mood_filter', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({style: animeStyle.value})
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Store mood data for sending
+                currentMoodData = data;
+                
+                let modalContent = `
+                    <div style="text-align: center;">
+                        <h3 style="color: #e91e63; margin-bottom: 1rem;">${data.style_name || data.style} Applied!</h3>
+                `;
+                
+                if (data.fallback) {
+                    modalContent += `
+                        <div style="font-size: 3rem; margin: 1rem 0;">🎨✨</div>
+                        <p style="color: #1de9b6; font-size: 1.2rem;">${data.description}</p>
+                        <div style="margin-top: 1rem; padding: 1rem; background: rgba(233,30,99,0.1); border-radius: 10px;">
+                            <p style="color: #b0bec5;">${data.message}</p>
+                            <div style="margin-top: 1rem; padding: 0.5rem; background: rgba(100,255,218,0.1); border-radius: 5px;">
+                                <small style="color: #64ffda;">💡 For real camera capture, try the "Browser Camera" button!</small>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    modalContent += `
+                        <img src="${data.image_url}" alt="Filtered Image" 
+                             style="max-width: 100%; height: auto; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                        <p style="color: #b0bec5; margin-top: 1rem;">${data.message}</p>
+                    `;
+                }
+                
+                modalContent += `</div>`;
+                
+                showModal('MOOD Filter Result', modalContent);
+                
+                // Show send button
+                if (moodSendContainer) {
+                    moodSendContainer.style.display = 'block';
+                }
+                
+                addActivity(`Applied ${data.style} mood filter`, 'success');
+            } else {
+                let errorContent = `<p style="color: #f44336;">${data.message}</p>`;
+                
+                if (data.suggestions) {
+                    errorContent += '<div style="margin-top: 1rem; text-align: left;">';
+                    errorContent += '<h4 style="color: #64ffda;">💡 Try these solutions:</h4>';
+                    errorContent += '<ul style="color: #b0bec5;">';
+                    data.suggestions.forEach(suggestion => {
+                        errorContent += `<li>${suggestion}</li>`;
+                    });
+                    errorContent += '</ul>';
+                    errorContent += '</div>';
+                }
+                
+                showModal('Mood Filter - Camera Issue', errorContent);
+            }
+        } catch (error) {
+            showModal('Error', `<p style="color: #f44336;">Failed to apply mood filter: ${error.message}</p>`);
+        }
+        
+        this.innerHTML = '<i class="bi bi-magic"></i> Quick Filter';
+        this.disabled = false;
+    });
+}
+
+// Browser mood filter
+if (browserMoodBtn) {
+    browserMoodBtn.addEventListener('click', async function() {
+        this.innerHTML = '<span class="loading"></span> Starting Camera...';
+        this.disabled = true;
+        
+        try {
+            const result = await detectMoodWithBrowserCamera();
+            
+            if (result.success) {
+                currentMoodData = result;
+                
+                showModal('Browser Mood Filter Result', `
+                    <div style="text-align: center;">
+                        <h3 style="color: #e91e63; margin-bottom: 1rem;">${result.style_name} Applied!</h3>
+                        <div style="font-size: 3rem; margin: 1rem 0;">🎨</div>
+                        <p style="color: #1de9b6; font-size: 1.2rem;">${result.description}</p>
+                        <div style="margin-top: 1rem; padding: 1rem; background: rgba(233,30,99,0.1); border-radius: 10px;">
+                            <p style="color: #b0bec5;">${result.message}</p>
+                            <small style="color: #888;">Method: Browser Camera</small>
+                        </div>
+                    </div>
+                `);
+                
+                if (moodSendContainer) {
+                    moodSendContainer.style.display = 'block';
+                }
+                
+                addActivity(`Browser mood filter: ${result.style}`, 'success');
+            } else {
+                showModal('Error', `<p style="color: #f44336;">${result.message}</p>`);
+            }
+        } catch (error) {
+            let errorContent = `
+                <div style="text-align: left;">
+                    <p style="color: #f44336; margin-bottom: 1rem;"><strong>Browser Camera Issue:</strong></p>
+                    <p style="color: #b0bec5; margin-bottom: 1rem;">${error.message}</p>
+                    
+                    <div style="background: rgba(100,255,218,0.1); padding: 1rem; border-radius: 10px; margin: 1rem 0;">
+                        <h4 style="color: #64ffda; margin-bottom: 0.5rem;">🔧 How to Fix Camera Permissions:</h4>
+                        <ol style="color: #b0bec5; margin: 0; padding-left: 1.5rem;">
+                            <li>Look for a <strong>camera icon</strong> in your browser address bar</li>
+                            <li>Click it and select <strong>"Allow"</strong> for camera access</li>
+                            <li>If no icon, go to browser settings and enable camera for this site</li>
+                            <li>Refresh the page and try again</li>
+                        </ol>
+                    </div>
+                    
+                    <div style="background: rgba(233,30,99,0.1); padding: 1rem; border-radius: 10px; margin: 1rem 0;">
+                        <h4 style="color: #e91e63; margin-bottom: 0.5rem;">✨ Alternative: Use Simulate Filter</h4>
+                        <p style="color: #b0bec5; margin: 0;">Click the <strong>"Simulate Filter"</strong> button for instant anime style results without camera!</p>
+                    </div>
+                </div>
+            `;
+            showModal('Camera Permission Help', errorContent);
+        }
+        
+        this.innerHTML = '<i class="bi bi-browser-chrome"></i> Browser Camera';
+        this.disabled = false;
+    });
+}
+
+// Simulate mood filter
+if (simulateMoodBtn) {
+    simulateMoodBtn.addEventListener('click', async function() {
+        this.innerHTML = '<span class="loading"></span> Simulating...';
+        this.disabled = true;
+        
+        try {
+            const response = await fetch('/mood_filter_simulate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ style: animeStyle.value })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                currentMoodData = data;
+                
+                showModal('Simulated Mood Filter', `
+                    <div style="text-align: center;">
+                        <h3 style="color: #e91e63; margin-bottom: 1rem;">${data.style_name} Simulated!</h3>
+                        <div style="font-size: 3rem; margin: 1rem 0;">🎨✨</div>
+                        <p style="color: #1de9b6; font-size: 1.2rem;">${data.description}</p>
+                        <div style="margin-top: 1rem; padding: 1rem; background: rgba(233,30,99,0.1); border-radius: 10px;">
+                            <p style="color: #b0bec5;">${data.message}</p>
+                            <small style="color: #888;">Method: AI Simulation (No Camera Required)</small>
+                        </div>
+                    </div>
+                `);
+                
+                if (moodSendContainer) {
+                    moodSendContainer.style.display = 'block';
+                }
+                
+                addActivity(`Simulated mood filter: ${data.style}`, 'success');
+            } else {
+                showModal('Error', `<p style="color: #f44336;">${data.message}</p>`);
+            }
+        } catch (error) {
+            showModal('Error', `<p style="color: #f44336;">Mood simulation failed: ${error.message}</p>`);
+        }
+        
+        this.innerHTML = '<i class="bi bi-cpu"></i> Simulate Filter';
+        this.disabled = false;
+    });
+}
+
+// Test mood filter sending
+if (testMoodSendBtn) {
+    testMoodSendBtn.addEventListener('click', async function() {
+        this.innerHTML = '<span class="loading"></span> Creating Test...';
+        this.disabled = true;
+        
+        try {
+            const response = await fetch('/test_mood_send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                currentMoodData = data;
+                
+                showModal('Test Image Created', `
+                    <div style="text-align: center;">
+                        <h3 style="color: #e91e63; margin-bottom: 1rem;">Test ${data.style_name} Created!</h3>
+                        <img src="data:image/jpeg;base64,${data.image_data}" style="max-width: 100%; height: auto; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                        <p style="color: #b0bec5; margin-top: 1rem;">${data.message}</p>
+                        <div style="margin-top: 1rem; padding: 0.5rem; background: rgba(23,162,184,0.1); border-radius: 5px;">
+                            <small style="color: #17a2b8;">This test image contains real base64 data that will be sent to chat!</small>
+                        </div>
+                    </div>
+                `);
+                
+                if (moodSendContainer) {
+                    moodSendContainer.style.display = 'block';
+                }
+                
+                addActivity('Created test mood filter with real image data', 'success');
+            } else {
+                showModal('Error', `<p style="color: #f44336;">${data.message}</p>`);
+            }
+        } catch (error) {
+            showModal('Error', `<p style="color: #f44336;">Test failed: ${error.message}</p>`);
+        }
+        
+        this.innerHTML = '<i class="bi bi-send-check"></i> Test Image Send';
+        this.disabled = false;
+    });
+}
+
+// Modal functions
+function showModal(title, content) {
+    modalTitle.textContent = title;
+    modalBody.innerHTML = content;
+    aiModal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+closeModal.addEventListener('click', function() {
+    aiModal.style.display = 'none';
+    document.body.style.overflow = 'auto';
+});
+
+aiModal.addEventListener('click', function(e) {
+    if (e.target === aiModal) {
+        closeModal.click();
+    }
+});
+
+// Emotion emojis
+function getEmotionEmoji(emotion) {
+    const emojis = {
+        happy: '😊',
+        sad: '😢',
+        angry: '😠',
+        surprise: '😲',
+        fear: '😨',
+        disgust: '🤢',
+        neutral: '😐'
+    };
+    return emojis[emotion] || '🙂';
+}
+
+// Send emotion to friend
+if (sendEmotionBtn) {
+    sendEmotionBtn.addEventListener('click', function() {
+        if (currentEmotionData && currentChatUser) {
+            const emotionMessage = `🤖 AI Emotion Detection Result: ${getEmotionEmoji(currentEmotionData.emotion)} ${currentEmotionData.emotion.charAt(0).toUpperCase() + currentEmotionData.emotion.slice(1)} (${currentEmotionData.confidence.toFixed(1)}% confidence)`;
+            
+            socket.emit('send_private_message', {
+                message: emotionMessage,
+                recipient: currentChatUser,
+                type: 'emotion',
+                emotion_data: currentEmotionData
+            });
+            
+            addActivity(`Sent emotion to ${currentChatUser}`, 'success');
+            
+            // Hide send button after sending
+            emotionSendContainer.style.display = 'none';
+        } else {
+            alert('Please select a user to chat with first!');
+        }
+    });
+}
+
+// Send mood filter to friend
+if (sendMoodBtn) {
+    sendMoodBtn.addEventListener('click', async function() {
+        if (currentMoodData && currentChatUser) {
+            this.innerHTML = '<span class="loading"></span> Sending...';
+            this.disabled = true;
+            
+            try {
+                let moodDataToSend = { ...currentMoodData };
+                
+                // If we have an image_url but no image_data, convert the image to base64
+                if (moodDataToSend.image_url && !moodDataToSend.image_data && !moodDataToSend.fallback) {
+                    try {
+                        // Fetch the image and convert to base64
+                        const imageResponse = await fetch(moodDataToSend.image_url);
+                        if (imageResponse.ok) {
+                            const imageBlob = await imageResponse.blob();
+                            const base64Data = await new Promise((resolve) => {
+                                const reader = new FileReader();
+                                reader.onload = () => {
+                                    const base64 = reader.result.split(',')[1]; // Remove data:image/jpeg;base64, prefix
+                                    resolve(base64);
+                                };
+                                reader.readAsDataURL(imageBlob);
+                            });
+                            moodDataToSend.image_data = base64Data;
+                            console.log('✓ Converted image file to base64 for sending');
+                        }
+                    } catch (error) {
+                        console.log('Could not convert image to base64:', error);
+                        // Continue with original data
+                    }
+                }
+                
+                // Create a proper mood filter message
+                const moodMessage = `🎨 Shared ${moodDataToSend.style_name || moodDataToSend.style} filter result`;
+                
+                socket.emit('send_private_message', {
+                    message: moodMessage,
+                    recipient: currentChatUser,
+                    type: 'mood_filter',
+                    mood_data: moodDataToSend
+                });
+                
+                addActivity(`Sent mood filter image to ${currentChatUser}`, 'success');
+                
+                // Hide send button after sending
+                moodSendContainer.style.display = 'none';
+                
+            } catch (error) {
+                console.error('Error sending mood filter:', error);
+                addActivity('Failed to send mood filter', 'error');
+            }
+            
+            this.innerHTML = '<i class="bi bi-send"></i> Send This filter';
+            this.disabled = false;
+        } else {
+            alert('Please select a user to chat with first!');
+        }
+    });
+}
+
+// Built-in browser camera emotion detection
+async function detectEmotionWithBrowserCamera() {
+    return new Promise(async (resolve, reject) => {
+        try {
+            // Request camera access
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { width: 640, height: 480, facingMode: 'user' } 
+            });
+            
+            // Create video element
+            const video = document.createElement('video');
+            video.srcObject = stream;
+            video.autoplay = true;
+            video.muted = true;
+            video.playsInline = true;
+            
+            // Create canvas for capture
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Show camera in modal
+            showModal('Browser Camera Detection', `
+                <div style="text-align: center;">
+                    <div id="cameraPreview" style="margin-bottom: 1rem;"></div>
+                    <div id="cameraStatus">Starting camera...</div>
+                    <div id="cameraCountdown" style="font-size: 2rem; color: #64ffda; margin: 1rem 0; display: none;"></div>
+                    <button id="captureNowBtn" style="margin-top: 1rem; display: none;" onclick="captureNow()">Capture Now</button>
+                </div>
+            `);
+            
+            const previewDiv = document.getElementById('cameraPreview');
+            const statusDiv = document.getElementById('cameraStatus');
+            const countdownDiv = document.getElementById('cameraCountdown');
+            
+            video.style.width = '100%';
+            video.style.maxWidth = '400px';
+            video.style.height = '300px';
+            video.style.borderRadius = '10px';
+            video.style.border = '2px solid #64ffda';
+            
+            video.onloadedmetadata = async () => {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                previewDiv.appendChild(video);
+                statusDiv.innerHTML = 'Camera ready! Capturing in 3 seconds...';
+                document.getElementById('captureNowBtn').style.display = 'inline-block';
+                
+                // Auto-capture countdown
+                countdownDiv.style.display = 'block';
+                for (let i = 3; i > 0; i--) {
+                    countdownDiv.innerHTML = `📸 ${i}`;
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                
+                // Capture and analyze
+                countdownDiv.innerHTML = '📸 Analyzing...';
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = canvas.toDataURL('image/jpeg', 0.8);
+                
+                // Stop camera
+                stream.getTracks().forEach(track => track.stop());
+                
+                // Send to server
+                try {
+                    const response = await fetch('/emotion_detect_image', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ image: imageData })
+                    });
+                    
+                    const result = await response.json();
+                    closeModal.click(); // Close camera modal
+                    resolve(result);
+                } catch (error) {
+                    closeModal.click();
+                    reject(error);
+                }
+            };
+            
+            // Manual capture function
+            window.captureNow = async () => {
+                countdownDiv.innerHTML = '📸 Analyzing...';
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = canvas.toDataURL('image/jpeg', 0.8);
+                
+                stream.getTracks().forEach(track => track.stop());
+                
+                try {
+                    const response = await fetch('/emotion_detect_image', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ image: imageData })
+                    });
+                    
+                    const result = await response.json();
+                    closeModal.click();
+                    resolve(result);
+                } catch (error) {
+                    closeModal.click();
+                    reject(error);
+                }
+            };
+            
+        } catch (error) {
+            reject(new Error('Camera access denied. Please allow camera permissions.'));
+        }
+    });
+}
+
+// Browser mood filter detection
+async function detectMoodWithBrowserCamera() {
+    return new Promise(async (resolve, reject) => {
+        try {
+            // Check if camera is available
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                reject(new Error('Camera not supported in this browser. Please use a modern browser or try the Simulate option.'));
+                return;
+            }
+            
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { width: 640, height: 480, facingMode: 'user' } 
+            });
+            
+            const video = document.createElement('video');
+            video.srcObject = stream;
+            video.autoplay = true;
+            video.muted = true;
+            video.playsInline = true;
+            
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            showModal('Browser Mood Filter', `
+                <div style="text-align: center;">
+                    <div id="moodCameraPreview" style="margin-bottom: 1rem;"></div>
+                    <div id="moodCameraStatus">Starting camera...</div>
+                    <div id="moodCameraCountdown" style="font-size: 2rem; color: #e91e63; margin: 1rem 0; display: none;"></div>
+                    <button id="captureMoodBtn" style="margin-top: 1rem; display: none;" onclick="captureMoodNow()">Capture Now</button>
+                </div>
+            `);
+            
+            const previewDiv = document.getElementById('moodCameraPreview');
+            const statusDiv = document.getElementById('moodCameraStatus');
+            const countdownDiv = document.getElementById('moodCameraCountdown');
+            
+            video.style.width = '100%';
+            video.style.maxWidth = '400px';
+            video.style.height = '300px';
+            video.style.borderRadius = '10px';
+            video.style.border = '2px solid #e91e63';
+            
+            video.onloadedmetadata = async () => {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                previewDiv.appendChild(video);
+                statusDiv.innerHTML = 'Camera ready! Capturing for mood filter in 3 seconds...';
+                document.getElementById('captureMoodBtn').style.display = 'inline-block';
+                
+                countdownDiv.style.display = 'block';
+                for (let i = 3; i > 0; i--) {
+                    countdownDiv.innerHTML = `🎨 ${i}`;
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                
+                countdownDiv.innerHTML = '🎨 Processing...';
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = canvas.toDataURL('image/jpeg', 0.8);
+                
+                stream.getTracks().forEach(track => track.stop());
+                
+                try {
+                    const response = await fetch('/mood_filter_image', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            image: imageData,
+                            style: animeStyle.value 
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    closeModal.click();
+                    resolve(result);
+                } catch (error) {
+                    closeModal.click();
+                    reject(error);
+                }
+            };
+            
+            window.captureMoodNow = async () => {
+                countdownDiv.innerHTML = '🎨 Processing...';
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = canvas.toDataURL('image/jpeg', 0.8);
+                
+                stream.getTracks().forEach(track => track.stop());
+                
+                try {
+                    const response = await fetch('/mood_filter_image', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            image: imageData,
+                            style: animeStyle.value 
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    closeModal.click();
+                    resolve(result);
+                } catch (error) {
+                    closeModal.click();
+                    reject(error);
+                }
+            };
+            
+        } catch (error) {
+            let errorMessage = 'Camera access issue: ';
+            if (error.name === 'NotAllowedError') {
+                errorMessage += 'Camera permissions denied. Please click the camera icon in your browser address bar and allow camera access.';
+            } else if (error.name === 'NotFoundError') {
+                errorMessage += 'No camera found. Please connect a camera or use the Simulate option.';
+            } else if (error.name === 'NotReadableError') {
+                errorMessage += 'Camera is busy. Please close other apps using the camera (Zoom, Skype, etc.) and try again.';
+            } else if (error.name === 'OverconstrainedError') {
+                errorMessage += 'Camera constraints not supported. Try the Simulate option instead.';
+            } else {
+                errorMessage += error.message || 'Unknown camera error. Try the Simulate option for instant results.';
+            }
+            reject(new Error(errorMessage));
+        }
+    });
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    scrollToBottom();
+    addActivity('Welcome to ChatApp!', 'success');
+});
+</script>
+
+<style>
+    .message {
+        margin-bottom: 1rem;
+        padding: 0.8rem;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.03);
+        transition: all 0.3s ease;
+        animation: fadeInUp 0.3s ease;
+    }
+    
+    .message.own-message {
+        background: rgba(100, 255, 218, 0.1);
+        border-left: 3px solid #64ffda;
+    }
+    
+    .message-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.3rem;
+        font-size: 0.9rem;
+    }
+    
+    .message-content {
+        color: #e0e0e0;
+        line-height: 1.4;
+        word-wrap: break-word;
+    }
+    
+    .ai-feature {
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 10px;
+        padding: 1rem;
+        border-left: 3px solid #64ffda;
+    }
+    
+    .activity-item {
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        animation: slideInLeft 0.3s ease;
+    }
+    
+    .modal {
+        backdrop-filter: blur(5px);
+    }
+    
+    .modal-content {
+        animation: scaleIn 0.3s ease;
+    }
+    
+    .badge {
+        animation: bounce 2s infinite;
+    }
+    
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @keyframes slideInLeft {
+        from {
+            opacity: 0;
+            transform: translateX(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    
+    @keyframes scaleIn {
+        from {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+    
+    @keyframes bounce {
+        0%, 20%, 50%, 80%, 100% {
+            transform: translateY(0);
+        }
+        40% {
+            transform: translateY(-3px);
+        }
+        60% {
+            transform: translateY(-1px);
+        }
+    }
+    
+    /* Scrollbar styling */
+    #messageArea::-webkit-scrollbar,
+    #onlineUsers::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    #messageArea::-webkit-scrollbar-track,
+    #onlineUsers::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+    }
+    
+    #messageArea::-webkit-scrollbar-thumb,
+    #onlineUsers::-webkit-scrollbar-thumb {
+        background: rgba(100, 255, 218, 0.5);
+        border-radius: 3px;
+    }
+    
+    #messageArea::-webkit-scrollbar-thumb:hover,
+    #onlineUsers::-webkit-scrollbar-thumb:hover {
+        background: rgba(100, 255, 218, 0.8);
+    }
+    
+    /* Responsive design */
+    @media (max-width: 1024px) {
+        .container > div {
+            grid-template-columns: 250px 1fr 250px;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .container > div {
+            grid-template-columns: 1fr;
+            height: auto;
+        }
+        
+        .card {
+            max-height: none;
+        }
+        
+        #messageArea {
+            height: 400px;
+        }
+    }
+</style>
+{% endblock %}

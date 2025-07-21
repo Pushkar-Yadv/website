@@ -1,0 +1,16 @@
+Flask==2.3.3
+Flask-SocketIO==5.3.6
+opencv-python==4.8.1.78
+numpy==1.24.3
+requests==2.31.0
+Pillow>=9.0.0
+scikit-learn>=1.0.0
+matplotlib>=3.5.0
+tqdm>=4.62.0
+bcrypt==4.0.1
+python-socketio==5.9.0
+eventlet==0.33.3
+Werkzeug==2.3.7
+# Optional AI dependencies - install if needed
+# deepface==0.0.79
+# tensorflow==2.13.0

@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emotion Detection Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .dashboard-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-left: 4px solid #007bff;
+        }
+        
+        .stat-card h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        .recent-emotions {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .emotion-record {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .emotion-record:last-child {
+            border-bottom: none;
+        }
+        
+        .emotion-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .emotion-emoji {
+            font-size: 1.5em;
+        }
+        
+        .emotion-details {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .emotion-name {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .emotion-confidence {
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        .emotion-timestamp {
+            font-size: 0.9em;
+            color: #999;
+        }
+        
+        .refresh-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        
+        .refresh-btn:hover {
+            background: #0056b3;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .nav-links {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .nav-links a {
+            color: #007bff;
+            text-decoration: none;
+            margin: 0 10px;
+            padding: 5px 10px;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        
+        .nav-links a:hover {
+            background-color: #e9ecef;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="dashboard-header">
+            <h1>Emotion Detection Dashboard</h1>
+            <p>Real-time emotion tracking and analytics</p>
+        </div>
+        
+        <div class="nav-links">
+            <a href="/">← Back to Main App</a>
+            <button class="refresh-btn" onclick="refreshData()">🔄 Refresh Data</button>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Records</h3>
+                <div class="stat-value" id="total-count">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Most Common Emotion</h3>
+                <div class="stat-value" id="top-emotion">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Today's Records</h3>
+                <div class="stat-value" id="today-count">-</div>
+            </div>
+        </div>
+        
+        <div class="recent-emotions">
+            <h3>Recent Emotion Detections</h3>
+            <div id="recent-emotions-list" class="loading">Loading...</div>
+        </div>
+        
+        <div class="recent-emotions">
+            <h3>Emotion Statistics (Last 7 Days)</h3>
+            <div id="emotion-stats" class="loading">Loading...</div>
+        </div>
+    </div>
+
+    <script>
+        const emotionEmojis = {
+            'happy': '😊',
+            'sad': '😢',
+            'angry': '😠',
+            'fear': '😨',
+            'surprise': '😲',
+            'disgust': '🤢',
+            'neutral': '😐'
+        };
+
+        async function fetchData(url) {
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data.status === 'success') {
+                    return data;
+                } else {
+                    throw new Error(data.message || 'Unknown error');
+                }
+            } catch (error) {
+                console.error('Fetch error:', error);
+                throw error;
+            }
+        }
+
+        async function loadTotalCount() {
+            try {
+                const data = await fetchData('/api/emotions/count');
+                document.getElementById('total-count').textContent = data.count;
+            } catch (error) {
+                document.getElementById('total-count').textContent = 'Error';
+            }
+        }
+
+        async function loadRecentEmotions() {
+            try {
+                const data = await fetchData('/api/emotions/recent?limit=10');
+                const container = document.getElementById('recent-emotions-list');
+                
+                if (data.data.length === 0) {
+                    container.innerHTML = '<p>No emotion records found. Start emotion detection to see data here.</p>';
+                    return;
+                }
+                
+                container.innerHTML = data.data.map(record => `
+                    <div class="emotion-record">
+                        <div class="emotion-info">
+                            <span class="emotion-emoji">${emotionEmojis[record.emotion] || '😐'}</span>
+                            <div class="emotion-details">
+                                <span class="emotion-name">${record.emotion}</span>
+                                <span class="emotion-confidence">Confidence: ${record.confidence ? (record.confidence * 100).toFixed(1) + '%' : 'N/A'}</span>
+                            </div>
+                        </div>
+                        <span class="emotion-timestamp">${new Date(record.timestamp).toLocaleString()}</span>
+                    </div>
+                `).join('');
+            } catch (error) {
+                document.getElementById('recent-emotions-list').innerHTML = 
+                    `<div class="error">Error loading recent emotions: ${error.message}</div>`;
+            }
+        }
+
+        async function loadEmotionStats() {
+            try {
+                const data = await fetchData('/api/emotions/statistics');
+                const container = document.getElementById('emotion-stats');
+                
+                if (data.data.length === 0) {
+                    container.innerHTML = '<p>No statistics available yet.</p>';
+                    return;
+                }
+                
+                // Update top emotion
+                const topEmotion = data.data[0];
+                document.getElementById('top-emotion').textContent = 
+                    `${emotionEmojis[topEmotion.emotion] || '😐'} ${topEmotion.emotion}`;
+                
+                // Display all stats
+                container.innerHTML = data.data.map(stat => `
+                    <div class="emotion-record">
+                        <div class="emotion-info">
+                            <span class="emotion-emoji">${emotionEmojis[stat.emotion] || '😐'}</span>
+                            <div class="emotion-details">
+                                <span class="emotion-name">${stat.emotion}</span>
+                                <span class="emotion-confidence">Avg Confidence: ${stat.avg_confidence ? (stat.avg_confidence * 100).toFixed(1) + '%' : 'N/A'}</span>
+                            </div>
+                        </div>
+                        <span class="emotion-timestamp">${stat.count} times</span>
+                    </div>
+                `).join('');
+            } catch (error) {
+                document.getElementById('emotion-stats').innerHTML = 
+                    `<div class="error">Error loading statistics: ${error.message}</div>`;
+            }
+        }
+
+        async function loadTodayCount() {
+            try {
+                const today = new Date().toISOString().split('T')[0];
+                const data = await fetchData(`/api/emotions/statistics?date_from=${today}&date_to=${today}`);
+                const todayTotal = data.data.reduce((sum, stat) => sum + stat.count, 0);
+                document.getElementById('today-count').textContent = todayTotal;
+            } catch (error) {
+                document.getElementById('today-count').textContent = 'Error';
+            }
+        }
+
+        async function refreshData() {
+            document.getElementById('recent-emotions-list').innerHTML = '<div class="loading">Loading...</div>';
+            document.getElementById('emotion-stats').innerHTML = '<div class="loading">Loading...</div>';
+            
+            await Promise.all([
+                loadTotalCount(),
+                loadRecentEmotions(),
+                loadEmotionStats(),
+                loadTodayCount()
+            ]);
+        }
+
+        // Load data when page loads
+        document.addEventListener('DOMContentLoaded', refreshData);
+        
+        // Auto-refresh every 30 seconds
+        setInterval(refreshData, 30000);
+    </script>
+</body>
+</html>
