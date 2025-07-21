@@ -1,0 +1,6 @@
+anime-env/
+chatapp-env/
+__pycache__/
+*.pyd
+*.dll
+*.pyc
