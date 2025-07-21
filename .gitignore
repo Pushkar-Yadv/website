@@ -16,3 +16,6 @@ __pycache__/
 *.db
 anime-env/
 anime-env/
+*.swp
+all-files.txt
+.all-files.txt.swp
